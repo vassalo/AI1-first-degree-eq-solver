@@ -28,6 +28,9 @@ function submit() {
     steps.forEach((step) => {
         stepsContainer.innerHTML += '<div class=\"step\">' + step + '</div>';
     });
+
+    //teste de criação de arvore
+    //createTree("+6263+598/9-864-3*89989*7/2999", 0, new Node(0, null, null))
 }
 
 function removeSpaces() {
@@ -101,4 +104,31 @@ function solveOperationsTree(node) {
 
 function isLeaf(node) {
     return node.a === undefined && node.b === undefined;
+}
+
+//FUNÇÃO QUE CRIA A ÁRVORE DE OPERAÇÕES
+//PARÂMETROS: string das operações, posição atual, no anteriormente criado
+//RETORNO: node do topo da arvore
+//Na primeira chamada passar: (string, 0, new Node(0, null, null))
+function createTree(str, position, ant){
+    //condição de parada da recursão
+    if(position >= str.length)
+        return ant
+    //acrescendo 1 pois sempre chega apontando pra um caracter de op
+    i = position+1
+    //retirando os valores da string
+    number = ""
+    while(str[i] != '+' && str[i] != '-' && str[i] != '*' && str[i] != '/' && i<str.length){
+        number += str[i]
+        i++
+    }
+    //criando node de operação passando: (valor, node anterior, node com o valor numerico)
+    nodeOp = new Node(str[position], ant, new Node(Number.parseInt(number), null, null))
+    return createTree(str, i, nodeOp)
+}
+
+//Função que divide o valor pelo xCoefficient - se é que isso é msm necessario
+//recebe o valor retornado pela operação na arvore e divide pelo coeficiente
+function finalResult(secondMember){
+    return secondMember/xCoefficient
 }
