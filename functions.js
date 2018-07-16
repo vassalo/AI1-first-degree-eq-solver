@@ -106,6 +106,22 @@ function isLeaf(node) {
     return node.a === undefined && node.b === undefined;
 }
 
+//Função que ira calcular o xCoefficient
+function calculateXC(){
+    var x = 0, i, j;
+    //separando em 2 strings
+    var str1 = "", str2 = "";
+    for (i=0; i<equationStr.length; i++){
+        if(equationStr[i] == '=')
+            break
+        str1 += equationStr[i]
+    }
+    for (j=i+1; j<equationStr.length; j++){
+        str2 += equationStr[j]
+    }    
+    //aqui que realmente calcula o xCoeffcient qnd eu pensar em como tratar a string
+}
+
 //FUNÇÃO QUE CRIA A ÁRVORE DE OPERAÇÕES
 //PARÂMETROS: string das operações, posição atual, no anteriormente criado
 //RETORNO: node do topo da arvore
