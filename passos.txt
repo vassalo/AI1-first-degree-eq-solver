@@ -1,0 +1,9 @@
+equationStr;
+xCoefficient;
+
+1) tratar string: deixar sem espaços. Atualizar equationStr;
+2) separar equationStr em 2 strings (localmente): uma pra cada membro; contabilizar o valor do coeficiente final de X e enquanto faz isso remover todos os caracteres referentes a X e seus coeficientes. Atualizar xCoefficient e retornar a string final (sem X, mas com os 2 membros separados por =).
+3) passar os elementos para o segundo membro com os coeficiente multiplicados por -1. Retornar a string referente ao novo segundo membro.
+4) montar a árvore de operações. Retornar essa árvore.
+5) navegar pela árvore em pós ordem e retornar o valor final.
+6) Dividir o valor final da árvore pelo xCoefficient. Retornar o valor final (de x).
