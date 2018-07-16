@@ -29,8 +29,10 @@ function submit() {
         stepsContainer.innerHTML += '<div class=\"step\">' + step + '</div>';
     });
 
+    xCoefficient = calculateXC()
     //teste de criação de arvore
     //createTree("+6263+598/9-864-3*89989*7/2999", 0, new Node(0, null, null))
+
 }
 
 function removeSpaces() {
@@ -108,18 +110,29 @@ function isLeaf(node) {
 
 //Função que ira calcular o xCoefficient
 function calculateXC(){
+    console.log("Equação digitada: " + equationStr)
     var x = 0, i, j;
     //separando em 2 strings
-    var str1 = "", str2 = "";
-    for (i=0; i<equationStr.length; i++){
-        if(equationStr[i] == '=')
-            break
-        str1 += equationStr[i]
+    var strEq = equationStr.split('=')
+    var str1 = strEq[0], str2 = strEq[1];
+    return calculateMember(str1) - calculateMember(str2)
+
+}
+
+//FUNÇÃO QUE CALCULA O COEF EM CADA MEMEBRO
+//VERSAO APENAS + E -
+function calculateMember(str){
+    var i, coef = 0
+    for (i=0; i<str.length; i++){
+        if(str[i] == 'x'){
+            if(str[i-1] == '-')
+                coef--
+            else
+                coef++
+        }
+            
     }
-    for (j=i+1; j<equationStr.length; j++){
-        str2 += equationStr[j]
-    }    
-    //aqui que realmente calcula o xCoeffcient qnd eu pensar em como tratar a string
+    return coef
 }
 
 //FUNÇÃO QUE CRIA A ÁRVORE DE OPERAÇÕES
