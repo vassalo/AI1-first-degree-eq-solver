@@ -30,6 +30,7 @@ function submit() {
     });
 
     xCoefficient = calculateXC()
+    
     //teste de criação de arvore
     //createTree("+6263+598/9-864-3*89989*7/2999", 0, new Node(0, null, null))
 
@@ -111,11 +112,11 @@ function isLeaf(node) {
 //Função que ira calcular o xCoefficient
 function calculateXC(){
     console.log("Equação digitada: " + equationStr)
-    var x = 0, i, j;
     //separando em 2 strings
     var strEq = equationStr.split('=')
-    var str1 = strEq[0], str2 = strEq[1];
-    return calculateMember(str1) - calculateMember(str2)
+    calculateMember2(strEq[0])
+    calculateMember2(strEq[1])
+    return calculateMember(strEq[0]) - calculateMember(strEq[1])
 
 }
 
@@ -134,6 +135,36 @@ function calculateMember(str){
     }
     return coef
 }
+
+function calculateMember2(str){
+    var i, coef = 0, l = [], c = "", frst = [], scnd = []
+    for (i=0; i<str.length; i++){
+        if(str[i] == '+' || (str[i] == '-' && i!=0)){
+            l[l.length] = c
+            c = ""
+        }
+        c += str[i]
+            
+    }
+    l[l.length] = c
+    
+    for(i=0; i<l.length; i++){
+        if(l[i].includes("x")){
+            console.log(l[i] + " -> tem um x")
+            frst[frst.length] = l[i].replace(/x/g, "1")
+        }else{
+            scnd[scnd.length] = l[i]
+            //l[i] = "1"
+        }
+    }
+
+    console.log("f -> " + frst.join(''))
+    console.log("s -> " + scnd)
+    //createTree2(frst.join().replace(/,/g, ''), 0, new Node(1, null, null))
+    //console.log(createTree2(frst.join().replace(/,/g, ''), 0, new Node(1, null, null)))
+    return coef
+}
+
 
 //FUNÇÃO QUE CRIA A ÁRVORE DE OPERAÇÕES
 //PARÂMETROS: string das operações, posição atual, no anteriormente criado
@@ -161,3 +192,15 @@ function createTree(str, position, ant){
 function finalResult(secondMember){
     return secondMember/xCoefficient
 }
+
+/**
+ * 
+ * 
+ * 
+ * -1*1-7*2/3*1
+ * -5.6
+ * 
+ * 
+ * 
+ */
+
