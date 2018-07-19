@@ -1,6 +1,10 @@
-var equationStr;
-var xCoefficient;
-var steps = [];
+// let equationStr;
+let equation = [];
+let xCoefficient = 0;
+let steps = [];
+
+let regexFullEquation = /[+-]?(([0-9]+|x)[+-])*([0-9]+|x)=[+-]?(([0-9]+|x)[+-])*([0-9]+|x)/;
+let regexEquationElements = /[0-9]+|[+\-=]|x/g;
 
 class Node {
     constructor(op, a, b) {
@@ -11,62 +15,91 @@ class Node {
 }
 
 function submit() {
-    steps.length = 0;
-
-    var stepsContainer = document.getElementById('stepsContainer');
+    let stepsContainer = document.getElementById('stepsContainer');
     stepsContainer.innerHTML = '';
+    equation.length = 0;
+    xCoefficient = 0;
+    steps.length = 0;
+    let equationStr = removeSpaces(document.getElementById('equation').value);
 
-    removeSpaces();
-    steps.push(prepareStep(equationStr));
+    if (verifyEquation(equationStr)) {
+        equation = equationStr.match(regexEquationElements);
+        removeUnnecessaryPlusSign();
+        steps.push(formatStep());
 
-    var thirdStep = passElementsToSecondMember();
-    var fourthStep = new Node('-', new Node('-', new Node('+', 4, 3), 5), 9);
-    var fifthStep = solveOperationsTree(fourthStep);
-    console.log('res', fifthStep);
+        calculateXC();
+        steps.push(formatStep());
+        //
+        // let thirdStep = passElementsToSecondMember();
+        // let fourthStep = new Node('-', new Node('-', new Node('+', 4, 3), 5), 9);
+        // let fifthStep = solveOperationsTree(fourthStep);
+        // // console.log('res', fifthStep);
+        //
+        // // console.log('ss', steps);
+        steps.forEach((step) => {
+            stepsContainer.innerHTML += '<div class=\"step\">' + step + '</div>';
+        });
 
-    console.log('ss', steps);
-    steps.forEach((step) => {
-        stepsContainer.innerHTML += '<div class=\"step\">' + step + '</div>';
-    });
-
-    xCoefficient = calculateXC()
-    
-    //teste de criação de arvore
-    //createTree("+6263+598/9-864-3*89989*7/2999", 0, new Node(0, null, null))
-
+        //teste de criação de arvore
+        //createTree("+6263+598/9-864-3*89989*7/2999", 0, new Node(0, null, null))
+    } else {
+        stepsContainer.innerHTML = 'Expressão inválida';
+    }
 }
 
-function removeSpaces() {
-    equationStr = document.getElementById('equation').value;
-    equationStr = equationStr.replace(/ /g, '');
-    console.log('eqStr:', equationStr);
+function verifyEquation(eqStr) {
+    return eqStr !== '' && eqStr.replace(regexFullEquation, '') === '';
 }
 
-function prepareStep(eqStr) {
-    var elements = eqStr.split(/([+\-=])|([0-9]+)/g);
-    var step = '';
+function removeSpaces(str) {
+    return str.replace(/ /g, '');
+}
 
-    for (var i = 0; i < elements.length; i++) {
-        if (elements[i]) {
-            if (i > 0) {
-                step += ' ';
-            }
+function removeUnnecessaryPlusSign() {
+    let sepIdx = equation.findIndex((el) => el === '=');
+    if (equation[0] === '+') {
+        equation.splice(0, 1);
+    }
+    if (equation[sepIdx + 1] === '+') {
+        equation.splice(sepIdx + 1, 1);
+    }
+}
 
-            step += elements[i];
+function arrayToString(array) {
+    let str = '';
+
+    for (let i = 0; i < array.length; i++) {
+        str += array[i];
+    }
+
+    return str;
+}
+
+function formatStep() {
+    let sepIdx = equation.findIndex((el) => el === '=');
+    let step = '';
+
+    for (let i = 0; i < equation.length; i++) {
+        let currMemBegin = i < sepIdx ? 0 : sepIdx + 1;
+
+        if (i > 0 && !(i === currMemBegin + 1 && equation[currMemBegin] === '-')) {
+            step += ' ';
         }
+
+        step += equation[i];
     }
 
     return step;
 }
 
 function passElementsToSecondMember() {
-    var frstMember = equationStr.split('=')[0];
-    var scndMember = equationStr.split('=')[1];
-    var swapMember = '';
+    let frstMember = equationStr.split('=')[0];
+    let scndMember = equationStr.split('=')[1];
+    let swapMember = '';
 
-    var auxNum = '';
-    for (var i = frstMember.length - 1; i >= 0; i--) {
-        var intOrNan = Number(frstMember[i]);
+    let auxNum = '';
+    for (let i = frstMember.length - 1; i >= 0; i--) {
+        let intOrNan = Number(frstMember[i]);
 
         if (!isNaN(intOrNan)) {
             auxNum = intOrNan + auxNum;
@@ -76,14 +109,14 @@ function passElementsToSecondMember() {
                 auxNum = '';
             }
         } else {
-            var op = frstMember[i];
+            let op = frstMember[i];
 
             auxNum = (op === '+' ? -1 : 1) * Number(auxNum);
             swapMember = (op === '+' ? '' : '+') + auxNum + swapMember;
             auxNum = '';
         }
     }
-    console.log('scndMember', scndMember + swapMember);
+    // console.log('scndMember', scndMember + swapMember);
     return scndMember + swapMember;
 }
 
@@ -92,7 +125,7 @@ function solveOperationsTree(node) {
         return node;
     }
 
-    var res;
+    let res;
     switch (node.op) {
         case '+':
             res = solveOperationsTree(node.a) + solveOperationsTree(node.b);
@@ -111,19 +144,45 @@ function isLeaf(node) {
 
 //Função que ira calcular o xCoefficient
 function calculateXC(){
-    console.log("Equação digitada: " + equationStr)
-    //separando em 2 strings
-    var strEq = equationStr.split('=')
-    calculateMember2(strEq[0])
-    calculateMember2(strEq[1])
-    return calculateMember(strEq[0]) - calculateMember(strEq[1])
+    let sepIdx = equation.findIndex((el) => el === '=');
+    let eqWithoutX = [];
 
+    for (let i = 0; i < equation.length; i++) {
+        if (equation[i] === 'x') {
+            if (i < sepIdx) {
+                if (i === 0) {
+                    xCoefficient++;
+                } else if (equation[i - 1] === '+') {
+                    xCoefficient++;
+                    eqWithoutX.pop();
+                } else {
+                    eqWithoutX.pop();
+                    xCoefficient--;
+                }
+            } else {
+                if (i === sepIdx + 1 ) {
+                    xCoefficient--;
+                } else if (equation[i - 1] === '+') {
+                    xCoefficient--;
+                    eqWithoutX.pop();
+                } else {
+                    eqWithoutX.pop();
+                    xCoefficient++;
+                }
+            }
+        } else {
+            eqWithoutX.push(equation[i]);
+            console.log(eqWithoutX);
+        }
+    }
+
+    equation = [xCoefficient + 'x'].concat(eqWithoutX);
 }
 
 //FUNÇÃO QUE CALCULA O COEF EM CADA MEMEBRO
 //VERSAO APENAS + E -
 function calculateMember(str){
-    var i, coef = 0
+    let i, coef = 0
     for (i=0; i<str.length; i++){
         if(str[i] == 'x'){
             if(str[i-1] == '-')
@@ -136,21 +195,21 @@ function calculateMember(str){
     return coef
 }
 
-function calculateMember2(str){
-    var i, coef = 0, l = [], c = "", frst = [], scnd = []
-    for (i=0; i<str.length; i++){
-        if(str[i] == '+' || (str[i] == '-' && i!=0)){
-            l[l.length] = c
-            c = ""
+function calculateMember2(str) {
+    let coef = 0, l = [], c = "", frst = [], scnd = [];
+    for (let i = 0; i < str.length; i++) {
+        if (str[i] === '+' || (str[i] === '-' && i !== 0)){
+            l[l.length] = c;
+            c = "";
         }
         c += str[i]
             
     }
     l[l.length] = c
     
-    for(i=0; i<l.length; i++){
+    for(let i=0; i<l.length; i++){
         if(l[i].includes("x")){
-            console.log(l[i] + " -> tem um x")
+            // console.log(l[i] + " -> tem um x")
             frst[frst.length] = l[i].replace(/x/g, "1")
         }else{
             scnd[scnd.length] = l[i]
@@ -158,8 +217,8 @@ function calculateMember2(str){
         }
     }
 
-    console.log("f -> " + frst.join(''))
-    console.log("s -> " + scnd)
+    // console.log("f -> " + frst.join(''))
+    // console.log("s -> " + scnd)
     //createTree2(frst.join().replace(/,/g, ''), 0, new Node(1, null, null))
     //console.log(createTree2(frst.join().replace(/,/g, ''), 0, new Node(1, null, null)))
     return coef
