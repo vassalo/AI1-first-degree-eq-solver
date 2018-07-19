@@ -1,5 +1,4 @@
 body {
-  /*background-color: var(--gray);*/
   background-color: #141c23;
   color: white;
   font-family: monospace;
@@ -70,14 +69,17 @@ button:hover {
 
 div.step {
   height: 35px;
-  font-size: 1.5em;
   line-height: 1.8em;
   background-color: #e9fdff;
-  border: 3px solid lightsteelblue;
+  border: 1px solid lightsteelblue;
   font-weight: bold;
   color: black;
 }
 
 div.step + div.step {
   border-top: none;
+}
+
+#stepsContainer {
+  font-size: 1.5em;
 }
