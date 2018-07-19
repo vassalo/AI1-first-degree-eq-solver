@@ -65,16 +65,6 @@ function removeUnnecessaryPlusSign() {
     }
 }
 
-function arrayToString(array) {
-    let str = '';
-
-    for (let i = 0; i < array.length; i++) {
-        str += array[i];
-    }
-
-    return str;
-}
-
 function formatStep() {
     let sepIdx = equation.findIndex((el) => el === '=');
     let step = '';
@@ -90,6 +80,42 @@ function formatStep() {
     }
 
     return step;
+}
+
+function calculateXC(){
+    let sepIdx = equation.findIndex((el) => el === '=');
+    let eqWithoutX = [];
+
+    for (let i = 0; i < equation.length; i++) {
+        if (equation[i] === 'x') {
+            if (i < sepIdx) {
+                if (i === 0) {
+                    xCoefficient++;
+                } else if (equation[i - 1] === '+') {
+                    xCoefficient++;
+                    eqWithoutX.pop();
+                } else {
+                    eqWithoutX.pop();
+                    xCoefficient--;
+                }
+            } else {
+                if (i === sepIdx + 1 ) {
+                    xCoefficient--;
+                } else if (equation[i - 1] === '+') {
+                    xCoefficient--;
+                    eqWithoutX.pop();
+                } else {
+                    eqWithoutX.pop();
+                    xCoefficient++;
+                }
+            }
+        } else {
+            eqWithoutX.push(equation[i]);
+            console.log(eqWithoutX);
+        }
+    }
+
+    equation = [xCoefficient + 'x'].concat(eqWithoutX);
 }
 
 function passElementsToSecondMember() {
@@ -140,43 +166,6 @@ function solveOperationsTree(node) {
 
 function isLeaf(node) {
     return node.a === undefined && node.b === undefined;
-}
-
-//Função que ira calcular o xCoefficient
-function calculateXC(){
-    let sepIdx = equation.findIndex((el) => el === '=');
-    let eqWithoutX = [];
-
-    for (let i = 0; i < equation.length; i++) {
-        if (equation[i] === 'x') {
-            if (i < sepIdx) {
-                if (i === 0) {
-                    xCoefficient++;
-                } else if (equation[i - 1] === '+') {
-                    xCoefficient++;
-                    eqWithoutX.pop();
-                } else {
-                    eqWithoutX.pop();
-                    xCoefficient--;
-                }
-            } else {
-                if (i === sepIdx + 1 ) {
-                    xCoefficient--;
-                } else if (equation[i - 1] === '+') {
-                    xCoefficient--;
-                    eqWithoutX.pop();
-                } else {
-                    eqWithoutX.pop();
-                    xCoefficient++;
-                }
-            }
-        } else {
-            eqWithoutX.push(equation[i]);
-            console.log(eqWithoutX);
-        }
-    }
-
-    equation = [xCoefficient + 'x'].concat(eqWithoutX);
 }
 
 //FUNÇÃO QUE CALCULA O COEF EM CADA MEMEBRO
