@@ -55,7 +55,6 @@ function submit() {
 }
 
 function verifyEquation(eqStr) {
-    console.log(eqStr.match(regexFullEquation));
     return eqStr !== '' && eqStr.replace(regexFullEquation, '') === '';
 }
 
