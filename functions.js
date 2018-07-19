@@ -3,7 +3,9 @@ let xCoefficient = 0;
 let steps = [];
 
 let regexFullEquation = /[+-]?(([0-9]+|x)[+-])*([0-9]+|x)=[+-]?(([0-9]+|x)[+-])*([0-9]+|x)/;
+// let regexFullEquation = /[+-]?(([0-9]+(\.[0-9]+)?|x)[+-])*([0-9]+(\.[0-9]+)?|x)=[+-]?(([0-9]+(\.[0-9]+)?|x)[+-])*([0-9]+(\.[0-9]+)?|x)/;
 let regexEquationElements = /[0-9]+|[+\-=]|x/g;
+// let regexEquationElements = /([0-9]+(\.[0-9]+)?)|[+\-=]|x/g;
 
 class Node {
     constructor(op, a, b) {
@@ -53,6 +55,7 @@ function submit() {
 }
 
 function verifyEquation(eqStr) {
+    console.log(eqStr.match(regexFullEquation));
     return eqStr !== '' && eqStr.replace(regexFullEquation, '') === '';
 }
 
@@ -80,6 +83,7 @@ function removeUnnecessaryPlusSign() {
 }
 
 function formatStep() {
+    // console.log('eq', equation);
     let sepIdx = equation.findIndex((el) => el === '=');
     let step = '';
 
@@ -126,6 +130,10 @@ function calculateXC(){
         } else {
             eqWithoutX.push(equation[i]);
         }
+    }
+
+    if (!isNaN(eqWithoutX[0])) {
+        eqWithoutX = ['+'].concat(eqWithoutX);
     }
 
     updateEquation([xCoefficient + 'x'].concat(eqWithoutX));
