@@ -2,7 +2,7 @@ let equation = [];
 let xCoefficient = 0;
 let steps = [];
 
-let regexFullEquation = /-?([0-9]+|x)([+\-\/*](-?([0-9]+|x)))*=-?([0-9]+|x)([+\-\/*](-?([0-9]+|x)))*/;
+let regexFullEquation = /[+\-]?([0-9]+|x)([+\-\/*](-?([0-9]+|x)))*=[+\-]?([0-9]+|x)([+\-\/*](-?([0-9]+|x)))*/;
 // let regexFullEquation = /[+-]?(([0-9]+(\.[0-9]+)?|x)[+-])*([0-9]+(\.[0-9]+)?|x)=[+-]?(([0-9]+(\.[0-9]+)?|x)[+-])*([0-9]+(\.[0-9]+)?|x)/;
 let regexEquationElements = /x|[0-9]+|[+\-\/*=]/g;
 // let regexEquationElements = /([0-9]+(\.[0-9]+)?)|[+\-=]|x/g;
@@ -22,13 +22,13 @@ function submit() {
     xCoefficient = 0;
     steps.length = 0;
     let equationStr = removeSpaces(document.getElementById('equation').value);
-    removeUnnecessaryPlusSign();
 
     if (verifyEquation(equationStr)) {
         equation = equationStr.match(regexEquationElements);
+        removeUnnecessaryPlusSign();
         identifyUnaryMinus();
-        console.log(equation);
         parseElementsToNumber();
+        // console.log(equation);
         steps.push(formatStep());
 
         calculateXC();
@@ -87,14 +87,12 @@ function removeUnnecessaryPlusSign() {
 function identifyUnaryMinus() {
     let sepIdx = equation.findIndex((el) => el === '=');
     let newEquation = [];
-    console.log(equation.length);
     for (let i = equation.length - 1; i >= 0; i--) {
         let beginMember = i < sepIdx ? 0 : sepIdx + 1;
 
         if (equation[i] === '-') {
-            if (i === beginMember || !(!isNaN(equation[i - 1] || equation[i - 1] === 'x'))) {
+            if (i === beginMember || !(!isNaN(equation[i - 1]) || equation[i - 1] === 'x')) {
                 const element = newEquation.pop();
-                console.log(element);
                 newEquation.push(isNaN(element) ? '-' + element : -1*element);
             } else {
                 newEquation.push('-');
@@ -108,7 +106,6 @@ function identifyUnaryMinus() {
 }
 
 function formatStep() {
-    // console.log('eq', equation);
     let sepIdx = equation.findIndex((el) => el === '=');
     let step = '';
 
@@ -128,26 +125,31 @@ function calculateXC(){
     let eqWithoutX = [];
 
     for (let i = 0; i < equation.length; i++) {
-        if (equation[i] === 'x') {
+        if (isNaN(equation[i]) && equation[i].match('x')) {
+            let multFactor = 1;
+            if (equation[i][0] === '-') {
+                multFactor = -1;
+            }
+
             if (i < sepIdx) {
                 if (i === 0) {
-                    xCoefficient++;
+                    xCoefficient += multFactor;
                 } else if (equation[i - 1] === '+') {
-                    xCoefficient++;
+                    xCoefficient += multFactor;
                     eqWithoutX.pop();
                 } else {
                     eqWithoutX.pop();
-                    xCoefficient--;
+                    xCoefficient -= multFactor;
                 }
             } else {
                 if (i === sepIdx + 1 ) {
-                    xCoefficient--;
+                    xCoefficient -= multFactor;
                 } else if (equation[i - 1] === '+') {
-                    xCoefficient--;
+                    xCoefficient -= multFactor;
                     eqWithoutX.pop();
                 } else {
                     eqWithoutX.pop();
-                    xCoefficient++;
+                    xCoefficient += multFactor;
                 }
             }
         } else {
@@ -214,7 +216,6 @@ function solveOperationsTree(node) {
             break;
     }
 
-    // console.log(res);
     return res;
 }
 
@@ -241,6 +242,8 @@ function updateEquation(newEq) {
 
     if (update) {
         equation = newEq;
+        removeUnnecessaryPlusSign();
+        identifyUnaryMinus();
         steps.push(formatStep());
     }
 }
