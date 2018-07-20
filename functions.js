@@ -49,9 +49,9 @@ function submit() {
        
 
         let operationsTree = createTree(sepIdx + 1, equation.length - 1);
-        console.log("tree: " + operationsTree.op);
+        //console.log("tree: " + operationsTree.op);
 
-        navigateTree(operationsTree)
+        //navigateTree(operationsTree)
 
         let result = solveOperationsTree(operationsTree);
         updateEquation([equation[0], '='].concat(result));
@@ -114,53 +114,66 @@ function formatStep() {
 function coefOfEachX(begin, sinal){
     let i = begin+1
     var coef = 0, coef2 = 0, dps = 1, ants = 1
-    while(equation[i] !== '+' && equation[i] !== '-' && equation[i] !== '=' ){
-        if(i === equation.length)
-            break
-        if(equation[i] === '*'){
-            dps = dps * equation[i+1]
-        }else {
-            dps = dps / equation[i+1]
-        }
-        coef = dps
-        i += 2
-    }
-
-    if(coef != 0)
-        equation.splice(begin+1, i-begin-1)
-
-    if(equation[begin-1] == '-'){
-        dps *= -1
-    }
-
-    //console.log("equation----> " + Number.parseInt(begin+1), Number.parseInt(i), equation)
-
-    i = sinal+1
-    if((sinal === 0 && equation[sinal] === '-' ) || sinal !== 0)
-        i++
     
-    if(equation[begin-1] !== '=')
-        ants = equation[i-1]
-
-    while(i !== begin-1){
-        if(i === equation.length || i === begin || equation[begin-1] === '=')
-            break
-        if(equation[i] === '*'){
-            ants = ants * equation[i+1]
-        }else if(equation[i] === '/'){
-            ants = ants / equation[i+1]
+    if(equation[begin+1] !== '*' && equation[begin+1] !== '/'){
+        dps = 1
+        fim = begin+1
+    }else{
+        while(equation[i] !== '+' && equation[i] !== '-' && equation[i] !== '=' ){
+            if(i === equation.length)
+                break
+            if(equation[i] === '*'){
+                dps = dps * equation[i+1]
+            }else {
+                dps = dps / equation[i+1]
+            }
+            coef = dps
+            i += 2
         }
-        i += 2
-        coef = ants
+        fim = i
+    
+         if(equation[begin-1] == '-'){
+            dps *= -1
+        }
     }
 
-    if(coef !== 0)
-        equation.splice(sinal, i - sinal+2)
+    if(equation[begin-1] !== '*' && equation[begin-1] !== '/'){
+        ants = 1
+    }else{
+        i = sinal+1
+        coef = 0
+        if((sinal === 0 && equation[sinal] === '-' ) || sinal !== 0)
+            i++
+        
+        if(equation[begin-1] !== '=')
+            ants = equation[i-1]
+        if(begin === 0)
+            ants = 1
+        
 
-    if(equation[sinal] == '-'){
-        ants *= -1
+        while(i !== begin-1){
+            if(i === equation.length || equation[begin-1] === '=')
+                break
+            if(equation[i] === '*'){
+                ants = ants * equation[i+1]
+            }else if(equation[i] === '/'){
+                ants = ants / equation[i+1]
+            }
+            i += 2
+            coef = ants
+        }
+
+        if(equation[sinal] == '-'){
+            ants *= -1
+        }
     }
+
+    equation.splice(sinal, fim-sinal)
+
+
     console.log("eq splices: " + equation)
+    console.log("dps: " + dps + "  ants: " + ants)
+    console.log("sinal: " + sinal + "  fim: " + fim)
     //updateEquation(equation)
     return dps * ants
 }
@@ -185,12 +198,15 @@ function calculateXC(){
         }
     }
     console.log("eq: " + equation)
-    //equation[0] = xCoefficient + 'x'
+    console.log("xc: " + xCoefficient)
+    equation.unshift(xCoefficient + 'x')
 }
 
 function passElementsToSecondMember() {
     let sepIdx = equation.findIndex((el) => el === '=');
     let newScndMember = equation.slice(sepIdx + 1);
+
+console.log("newscndmem: " + newScndMember)
 
     for (let i = 1; i < sepIdx; i++) {
         switch (equation[i]) {
@@ -205,6 +221,8 @@ function passElementsToSecondMember() {
                 break;
         }
     }
+
+    console.log("newscndmem: " + newScndMember)
 
     updateEquation([equation[0], '='].concat(newScndMember));
     console.log("equation: " + equation)
