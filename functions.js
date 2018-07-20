@@ -2,9 +2,11 @@ let equation = [];
 let xCoefficient = 0;
 let steps = [];
 
-let regexFullEquation = /[+-]?(([0-9]+|x)[+-])*([0-9]+|x)=[+-]?(([0-9]+|x)[+-])*([0-9]+|x)/;
+let regexFullEquation = /[+-]?(([0-9]+|x)[+\-\/*])*([0-9]+|x)=[+-]?(([0-9]+|x)[+\-\/*])*([0-9]+|x)/;
+let regexEquationElements = /[0-9]+|[+\-\/*=]|x/g;
+////let regexFullEquation = /[+-]?(([0-9]+|x)[+-])*([0-9]+|x)=[+-]?(([0-9]+|x)[+-])*([0-9]+|x)/;
 // let regexFullEquation = /[+-]?(([0-9]+(\.[0-9]+)?|x)[+-])*([0-9]+(\.[0-9]+)?|x)=[+-]?(([0-9]+(\.[0-9]+)?|x)[+-])*([0-9]+(\.[0-9]+)?|x)/;
-let regexEquationElements = /[0-9]+|[+\-=]|x/g;
+////let regexEquationElements = /[0-9]+|[+\-=]|x/g;
 // let regexEquationElements = /([0-9]+(\.[0-9]+)?)|[+\-=]|x/g;
 
 class Node {
@@ -25,12 +27,15 @@ function submit() {
 
     if (verifyEquation(equationStr)) {
         equation = equationStr.match(regexEquationElements);
+        
         parseElementsToNumber();
         removeUnnecessaryPlusSign();
         steps.push(formatStep());
 
         calculateXC();
 
+        console.log(equation)
+        
         if (xCoefficient === 0) {
             stepsContainer.innerHTML = 'Impossível dividir por zero';
             return;
@@ -39,8 +44,15 @@ function submit() {
         passElementsToSecondMember();
 
         let sepIdx = equation.findIndex((el) => el === '=');
+        solvingMultAndDiv(sepIdx+1)
+
+       
+
         let operationsTree = createTree(sepIdx + 1, equation.length - 1);
-        console.log(operationsTree);
+        console.log("tree: " + operationsTree.op);
+
+        navigateTree(operationsTree)
+
         let result = solveOperationsTree(operationsTree);
         updateEquation([equation[0], '='].concat(result));
 
@@ -99,43 +111,81 @@ function formatStep() {
     return step;
 }
 
+function coefOfEachX(begin, sinal){
+    let i = begin+1
+    var coef = 0, coef2 = 0, dps = 1, ants = 1
+    while(equation[i] !== '+' && equation[i] !== '-' && equation[i] !== '=' ){
+        if(i === equation.length)
+            break
+        if(equation[i] === '*'){
+            dps = dps * equation[i+1]
+        }else {
+            dps = dps / equation[i+1]
+        }
+        coef = dps
+        i += 2
+    }
+
+    if(coef != 0)
+        equation.splice(begin+1, i-begin-1)
+
+    if(equation[begin-1] == '-'){
+        dps *= -1
+    }
+
+    //console.log("equation----> " + Number.parseInt(begin+1), Number.parseInt(i), equation)
+
+    i = sinal+1
+    if((sinal === 0 && equation[sinal] === '-' ) || sinal !== 0)
+        i++
+    
+    if(equation[begin-1] !== '=')
+        ants = equation[i-1]
+
+    while(i !== begin-1){
+        if(i === equation.length || i === begin || equation[begin-1] === '=')
+            break
+        if(equation[i] === '*'){
+            ants = ants * equation[i+1]
+        }else if(equation[i] === '/'){
+            ants = ants / equation[i+1]
+        }
+        i += 2
+        coef = ants
+    }
+
+    if(coef !== 0)
+        equation.splice(sinal, i - sinal+2)
+
+    if(equation[sinal] == '-'){
+        ants *= -1
+    }
+    console.log("eq splices: " + equation)
+    //updateEquation(equation)
+    return dps * ants
+}
+
 function calculateXC(){
     let sepIdx = equation.findIndex((el) => el === '=');
-    let eqWithoutX = [];
+    let eqWithoutX = [], s = 0;
 
     for (let i = 0; i < equation.length; i++) {
-        if (equation[i] === 'x') {
+        if(equation[i] === '+' || equation[i] === '-')
+            s = i
+        if(equation[i] === 'x') {        
+
             if (i < sepIdx) {
-                if (i === 0) {
-                    xCoefficient++;
-                } else if (equation[i - 1] === '+') {
-                    xCoefficient++;
-                    eqWithoutX.pop();
-                } else {
-                    eqWithoutX.pop();
-                    xCoefficient--;
-                }
+                xCoefficient += coefOfEachX(i, s)
             } else {
-                if (i === sepIdx + 1 ) {
-                    xCoefficient--;
-                } else if (equation[i - 1] === '+') {
-                    xCoefficient--;
-                    eqWithoutX.pop();
-                } else {
-                    eqWithoutX.pop();
-                    xCoefficient++;
-                }
+                xCoefficient -= coefOfEachX(i, s)
             }
+
         } else {
             eqWithoutX.push(equation[i]);
         }
     }
-
-    if (!isNaN(eqWithoutX[0])) {
-        eqWithoutX = ['+'].concat(eqWithoutX);
-    }
-
-    updateEquation([xCoefficient + 'x'].concat(eqWithoutX));
+    console.log("eq: " + equation)
+    //equation[0] = xCoefficient + 'x'
 }
 
 function passElementsToSecondMember() {
@@ -157,6 +207,7 @@ function passElementsToSecondMember() {
     }
 
     updateEquation([equation[0], '='].concat(newScndMember));
+    console.log("equation: " + equation)
 }
 
 function createTree(begin, end){
@@ -166,12 +217,23 @@ function createTree(begin, end){
 
     let a, b, op;
     for(let i = end; i >= begin; i--) {
-        if (isNaN(equation[i])) {
+        if (isNaN(equation[i]) && typeof equation[i] !== 'object') {
+            console.log("entrou com: " + equation[i])
             op = equation[i];
             a = createTree(begin, i - 1);
             b = createTree(i + 1, end);
             return new Node(op, a, b);
         }
+    }
+}
+
+function navigateTree(node) {
+    if (isLeaf(node)) {
+        console.log("Folha:" + node)
+    }else{
+        navigateTree(node.a)
+        navigateTree(node.b)
+        console.log("Op: " +node.op)
     }
 }
 
@@ -188,9 +250,15 @@ function solveOperationsTree(node) {
         case '-':
             res = solveOperationsTree(node.a) - solveOperationsTree(node.b);
             break;
+        case '*':
+            res = solveOperationsTree(node.a) * solveOperationsTree(node.b);7
+            break;
+        case '/':
+            res = solveOperationsTree(node.a) / solveOperationsTree(node.b);
+            break;
     }
 
-    console.log(res);
+    console.log(node.a + " " + node.op + " " + node.b + " = " + res);
     return res;
 }
 
@@ -219,4 +287,24 @@ function updateEquation(newEq) {
         equation = newEq;
         steps.push(formatStep());
     }
+}
+
+function solvingMultAndDiv (begin){
+    var saida = []
+    for (let i = begin; i < equation.length+1; i++){
+        if(equation[i] == '*' || equation[i] == '/'){
+            n = new Node(equation[i], equation[i-1], equation[i+1])
+            console.log("n.a: " + n.a)
+            if(typeof saida[saida.length-1] === 'object' ){
+                n = new Node(equation[i], saida[saida.length-1], equation[i+1])
+                saida.splice(saida.length-1, 1)}
+            saida.push(n)
+            i++
+            continue
+        }
+        if(equation[i-2] === '*' || equation[i-2] === '/' || equation[i-1]==='=')
+            continue
+        saida.push(equation[i-1])        
+    }
+    updateEquation([equation[0], '='].concat(saida));
 }
