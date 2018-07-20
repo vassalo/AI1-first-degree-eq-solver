@@ -2,9 +2,9 @@ let equation = [];
 let xCoefficient = 0;
 let steps = [];
 
-let regexFullEquation = /[+-]?(([0-9]+|x)[+-])*([0-9]+|x)=[+-]?(([0-9]+|x)[+-])*([0-9]+|x)/;
+let regexFullEquation = /-?([0-9]+|x)([+\-\/*](-?([0-9]+|x)))*=-?([0-9]+|x)([+\-\/*](-?([0-9]+|x)))*/;
 // let regexFullEquation = /[+-]?(([0-9]+(\.[0-9]+)?|x)[+-])*([0-9]+(\.[0-9]+)?|x)=[+-]?(([0-9]+(\.[0-9]+)?|x)[+-])*([0-9]+(\.[0-9]+)?|x)/;
-let regexEquationElements = /[0-9]+|[+\-=]|x/g;
+let regexEquationElements = /x|[0-9]+|[+\-\/*=]/g;
 // let regexEquationElements = /([0-9]+(\.[0-9]+)?)|[+\-=]|x/g;
 
 class Node {
@@ -22,11 +22,13 @@ function submit() {
     xCoefficient = 0;
     steps.length = 0;
     let equationStr = removeSpaces(document.getElementById('equation').value);
+    removeUnnecessaryPlusSign();
 
     if (verifyEquation(equationStr)) {
         equation = equationStr.match(regexEquationElements);
+        identifyUnaryMinus();
+        console.log(equation);
         parseElementsToNumber();
-        removeUnnecessaryPlusSign();
         steps.push(formatStep());
 
         calculateXC();
@@ -40,7 +42,7 @@ function submit() {
 
         let sepIdx = equation.findIndex((el) => el === '=');
         let operationsTree = createTree(sepIdx + 1, equation.length - 1);
-        console.log(operationsTree);
+        // console.log(operationsTree);
         let result = solveOperationsTree(operationsTree);
         updateEquation([equation[0], '='].concat(result));
 
@@ -67,6 +69,7 @@ function parseElementsToNumber() {
 }
 
 function removeSpaces(str) {
+    str = str.toLowerCase();
     return str.replace(/ /g, '');
 }
 
@@ -81,15 +84,36 @@ function removeUnnecessaryPlusSign() {
     }
 }
 
+function identifyUnaryMinus() {
+    let sepIdx = equation.findIndex((el) => el === '=');
+    let newEquation = [];
+    console.log(equation.length);
+    for (let i = equation.length - 1; i >= 0; i--) {
+        let beginMember = i < sepIdx ? 0 : sepIdx + 1;
+
+        if (equation[i] === '-') {
+            if (i === beginMember || !(!isNaN(equation[i - 1] || equation[i - 1] === 'x'))) {
+                const element = newEquation.pop();
+                console.log(element);
+                newEquation.push(isNaN(element) ? '-' + element : -1*element);
+            } else {
+                newEquation.push('-');
+            }
+        } else {
+            newEquation.push(equation[i]);
+        }
+    }
+
+    equation = newEquation.reverse();
+}
+
 function formatStep() {
     // console.log('eq', equation);
     let sepIdx = equation.findIndex((el) => el === '=');
     let step = '';
 
     for (let i = 0; i < equation.length; i++) {
-        let currMemBegin = i < sepIdx ? 0 : sepIdx + 1;
-
-        if (i > 0 && !(i === currMemBegin + 1 && equation[currMemBegin] === '-')) {
+        if (i > 0) {
             step += ' ';
         }
 
@@ -190,7 +214,7 @@ function solveOperationsTree(node) {
             break;
     }
 
-    console.log(res);
+    // console.log(res);
     return res;
 }
 
