@@ -3,9 +3,7 @@ let xCoefficient = 0;
 let steps = [];
 
 let regexFullEquation = /[+\-]?([0-9]+|x)([+\-\/*](-?([0-9]+|x)))*=[+\-]?([0-9]+|x)([+\-\/*](-?([0-9]+|x)))*/;
-// let regexFullEquation = /[+-]?(([0-9]+(\.[0-9]+)?|x)[+-])*([0-9]+(\.[0-9]+)?|x)=[+-]?(([0-9]+(\.[0-9]+)?|x)[+-])*([0-9]+(\.[0-9]+)?|x)/;
 let regexEquationElements = /x|[0-9]+|[+\-\/*=]/g;
-// let regexEquationElements = /([0-9]+(\.[0-9]+)?)|[+\-=]|x/g;
 
 class Node {
     constructor(op, a, b) {
@@ -24,12 +22,7 @@ function submit() {
     let equationStr = removeSpaces(document.getElementById('equation').value);
 
     if (verifyEquation(equationStr)) {
-        equation = equationStr.match(regexEquationElements);
-        removeUnnecessaryPlusSign();
-        identifyUnaryMinus();
-        parseElementsToNumber();
-        // console.log(equation);
-        steps.push(formatStep());
+        updateEquation(equationStr.match(regexEquationElements), true);
 
         calculateXC();
 
@@ -40,8 +33,8 @@ function submit() {
 
         passElementsToSecondMember();
 
-        let sepIdx = equation.findIndex((el) => el === '=');
-        let operationsTree = createTree(sepIdx + 1, equation.length - 1);
+        // let sepIdx = equation.findIndex((el) => el === '=');
+        let operationsTree = createTree(2, equation.length - 1);
         // console.log(operationsTree);
         let result = solveOperationsTree(operationsTree);
         updateEquation([equation[0], '='].concat(result));
@@ -60,10 +53,10 @@ function verifyEquation(eqStr) {
     return eqStr !== '' && eqStr.replace(regexFullEquation, '') === '';
 }
 
-function parseElementsToNumber() {
-    for (let i = 0; i < equation.length; i++) {
-        if (!isNaN(equation[i])) {
-            equation[i] = Number(equation[i]);
+function parseElementsToNumber(eq = equation) {
+    for (let i = 0; i < eq.length; i++) {
+        if (!isNaN(eq[i])) {
+            eq[i] = Number(eq[i]);
         }
     }
 }
@@ -73,40 +66,39 @@ function removeSpaces(str) {
     return str.replace(/ /g, '');
 }
 
-function removeUnnecessaryPlusSign() {
-    let sepIdx = equation.findIndex((el) => el === '=');
-    if (equation[0] === '+') {
-        equation.splice(0, 1);
+function removeUnnecessaryPlusSign(eq = equation) {
+    let sepIdx = eq.findIndex((el) => el === '=');
+    if (eq[0] === '+') {
+        eq.splice(0, 1);
         sepIdx--;
     }
-    if (equation[sepIdx + 1] === '+') {
-        equation.splice(sepIdx + 1, 1);
+    if (eq[sepIdx + 1] === '+') {
+        eq.splice(sepIdx + 1, 1);
     }
 }
 
-function identifyUnaryMinus() {
-    let sepIdx = equation.findIndex((el) => el === '=');
+function identifyUnaryMinus(eq = equation) {
+    let sepIdx = eq.findIndex((el) => el === '=');
     let newEquation = [];
-    for (let i = equation.length - 1; i >= 0; i--) {
+    for (let i = eq.length - 1; i >= 0; i--) {
         let beginMember = i < sepIdx ? 0 : sepIdx + 1;
 
-        if (equation[i] === '-') {
-            if (i === beginMember || !(!isNaN(equation[i - 1]) || equation[i - 1] === 'x')) {
+        if (eq[i] === '-') {
+            if (i === beginMember || !(!isNaN(eq[i - 1]) || eq[i - 1].match('x'))) {
                 const element = newEquation.pop();
                 newEquation.push(isNaN(element) ? '-' + element : -1*element);
             } else {
                 newEquation.push('-');
             }
         } else {
-            newEquation.push(equation[i]);
+            newEquation.push(eq[i]);
         }
     }
 
-    equation = newEquation.reverse();
+    return newEquation.reverse()
 }
 
 function formatStep() {
-    let sepIdx = equation.findIndex((el) => el === '=');
     let step = '';
 
     for (let i = 0; i < equation.length; i++) {
@@ -161,7 +153,12 @@ function calculateXC(){
         eqWithoutX = ['+'].concat(eqWithoutX);
     }
 
-    updateEquation([xCoefficient + 'x'].concat(eqWithoutX));
+    sepIdx = eqWithoutX.findIndex((el) => el === '=');
+    if (sepIdx === eqWithoutX.length - 1) {
+        eqWithoutX = eqWithoutX.concat(0);
+    }
+
+    updateEquation([(Math.abs(xCoefficient) === 1 ? (xCoefficient < 0 ? '-' : '') : xCoefficient) + 'x'].concat(eqWithoutX));
 }
 
 function passElementsToSecondMember() {
@@ -227,8 +224,11 @@ function finalResult(){
     return equation[2]/xCoefficient;
 }
 
-function updateEquation(newEq) {
+function updateEquation(newEq, parseElements) {
     let update = false;
+
+    removeUnnecessaryPlusSign(newEq);
+    newEq = identifyUnaryMinus(newEq);
 
     if (newEq.length !== equation.length) {
         update = true;
@@ -242,8 +242,10 @@ function updateEquation(newEq) {
 
     if (update) {
         equation = newEq;
-        removeUnnecessaryPlusSign();
-        identifyUnaryMinus();
+        if (parseElements === true) {
+            parseElementsToNumber();
+        }
+
         steps.push(formatStep());
     }
 }
