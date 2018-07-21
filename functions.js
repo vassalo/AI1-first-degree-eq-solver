@@ -2,8 +2,8 @@ let equation = [];
 let xCoefficient = 0;
 let steps = [];
 
-let regexFullEquation = /[+\-]?([0-9]+|x)([+\-\/*](-?([0-9]+|x)))*=[+\-]?([0-9]+|x)([+\-\/*](-?([0-9]+|x)))*/;
-let regexEquationElements = /x|[0-9]+|[+\-\/*=]/g;
+let regexFullEquation = /[+\-]?([0-9]+x?|x)([+\-\/*](-?([0-9]+x?|x)))*=[+\-]?([0-9]+x?|x)([+\-\/*](-?([0-9]+x?|x)))*/;
+let regexEquationElements = /([0-9]*x)|[0-9]+|[+\-\/*=]/g;
 
 class Node {
     constructor(op, a, b) {
@@ -118,9 +118,11 @@ function calculateXC(){
 
     for (let i = 0; i < equation.length; i++) {
         if (isNaN(equation[i]) && equation[i].match('x')) {
-            let multFactor = 1;
+            let innerCoef = equation[i].match(/[0-9]+/);
+            console.log(equation[i], innerCoef);
+            let multFactor = (innerCoef === null || innerCoef[0].length === 0 ? 1 : Number(innerCoef[0]));
             if (equation[i][0] === '-') {
-                multFactor = -1;
+                multFactor *= -1;
             }
 
             if (i < sepIdx) {
