@@ -68,7 +68,7 @@ button:hover {
 }
 
 div.step {
-  height: 35px;
+  min-height: 35px;
   line-height: 1.8em;
   background-color: #e9fdff;
   border: 1px solid lightsteelblue;

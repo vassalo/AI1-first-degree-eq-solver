@@ -2,8 +2,8 @@ let equation = [];
 let xCoefficient = 0;
 let steps = [];
 
-let regexFullEquation = /[+\-]?([0-9]+x?|x)([+\-\/*](-?([0-9]+x?|x)))*=[+\-]?([0-9]+x?|x)([+\-\/*](-?([0-9]+x?|x)))*/;
-let regexEquationElements = /([0-9]*x)|[0-9]+|[+\-\/*=]/g;
+let regexFullEquation = /[+\-]?([0-9]+(\.[0-9]+)?x?|x)([+\-\/*](-?([0-9]+(\.[0-9]+)?x?|x)))*=[+\-]?([0-9]+(\.[0-9]+)?x?|x)([+\-\/*](-?([0-9]+(\.[0-9]+)?x?|x)))*/;
+let regexEquationElements = /([0-9]+\.[0-9]+x?)|([0-9]*x)|[0-9]+|[+\-\/*=]/g;
 
 class Node {
     constructor(op, a, b) {
@@ -23,6 +23,8 @@ function submit() {
 
     if (verifyEquation(equationStr)) {
         updateEquation(equationStr.match(regexEquationElements), true);
+
+        solveMultsAndDivs();
 
         calculateXC();
 
@@ -98,11 +100,11 @@ function identifyUnaryMinus(eq = equation) {
     return newEquation.reverse()
 }
 
-function formatStep() {
+function formatStep(separateElements = true) {
     let step = '';
 
     for (let i = 0; i < equation.length; i++) {
-        if (i > 0) {
+        if (i > 0 && separateElements) {
             step += ' ';
         }
 
@@ -112,14 +114,49 @@ function formatStep() {
     return step;
 }
 
+function solveMultsAndDivs() {
+    let newEqStr = this.formatStep(false);
+
+    let operations = newEqStr.match(/(-?[0-9]+(\.[0-9]+)?([*\/]-?[0-9]+(\.[0-9]+)?)+)|(-?[0-9]+([*\/]-?[0-9]+)+)/g);
+    let solutions = [];
+
+    for (let i = 0; i < operations.length; i++) {
+        let elements = operations[i].match(/(-?[0-9]+(\.[0-9]+)?)|[*\/]/g);
+
+        let stack = [elements[0]];
+        let operator;
+
+        for (let j = 0; j < elements.length; j++) {
+            if (!isNaN(elements[j])) {
+                elements[j] = Number(elements[j]);
+
+                if (operator === '*') {
+                    let prevEl = stack.pop();
+                    stack.push(prevEl * elements[j]);
+                } else if (operator === '/') {
+                    let prevEl = stack.pop();
+                    stack.push(prevEl / elements[j]);
+                }
+            } else {
+                operator = elements[j];
+            }
+        }
+
+        console.log(operations[i], stack[0]);
+        newEqStr = newEqStr.replace(operations[i], stack[0]);
+        console.log(newEqStr);
+    }
+
+    updateEquation(newEqStr.match(regexEquationElements), true);
+}
+
 function calculateXC(){
     let sepIdx = equation.findIndex((el) => el === '=');
     let eqWithoutX = [];
 
     for (let i = 0; i < equation.length; i++) {
         if (isNaN(equation[i]) && equation[i].match('x')) {
-            let innerCoef = equation[i].match(/[0-9]+/);
-            console.log(equation[i], innerCoef);
+            let innerCoef = equation[i].match(/[0-9]+(\.[0-9]+)?/);
             let multFactor = (innerCoef === null || innerCoef[0].length === 0 ? 1 : Number(innerCoef[0]));
             if (equation[i][0] === '-') {
                 multFactor *= -1;
