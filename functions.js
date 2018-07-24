@@ -119,8 +119,10 @@ function solveMultsAndDivs() {
 
     let operations = newEqStr.match(/(-?[0-9]+(\.[0-9]+)?([*\/]-?[0-9]+(\.[0-9]+)?)+)|(-?[0-9]+([*\/]-?[0-9]+)+)/g);
     let solutions = [];
-
+    if(operations === null)
+        return
     for (let i = 0; i < operations.length; i++) {
+        console.log("f")
         let elements = operations[i].match(/(-?[0-9]+(\.[0-9]+)?)|[*\/]/g);
 
         let stack = [elements[0]];
