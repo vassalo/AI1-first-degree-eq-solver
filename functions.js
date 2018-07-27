@@ -1,6 +1,7 @@
 let equation = [];
 let xCoefficient = 0;
 let steps = [];
+let stepsContainer;
 
 let regexFullEquation = /[+\-]?([0-9]+(\.[0-9]+)?x?|x)([+\-\/*](-?([0-9]+(\.[0-9]+)?x?|x)))*=[+\-]?([0-9]+(\.[0-9]+)?x?|x)([+\-\/*](-?([0-9]+(\.[0-9]+)?x?|x)))*/;
 let regexEquationElements = /([0-9]+\.[0-9]+x?)|([0-9]*x)|[0-9]+|[+\-\/*=]/g;
@@ -14,7 +15,7 @@ class Node {
 }
 
 function submit() {
-    let stepsContainer = document.getElementById('stepsContainer');
+    stepsContainer = document.getElementById('stepsContainer');
     stepsContainer.innerHTML = '';
     equation.length = 0;
     xCoefficient = 0;
@@ -26,29 +27,39 @@ function submit() {
 
         solveMultsAndDivs();
 
-        calculateXC();
+        if (!hasError()) {
+            calculateXC();
 
-        if (xCoefficient === 0) {
-            stepsContainer.innerHTML = 'Impossível dividir por zero';
-            return;
+            if (xCoefficient === 0) {
+                setErrorMessage('Impossível dividir por zero');
+                return;
+            }
+
+            passElementsToSecondMember();
+
+            // let sepIdx = equation.findIndex((el) => el === '=');
+            let operationsTree = createTree(2, equation.length - 1);
+            // console.log(operationsTree);
+            let result = solveOperationsTree(operationsTree);
+            updateEquation([equation[0], '='].concat(result));
+
+            updateEquation(['x', '=', finalResult()]);
+
+            steps.forEach((step) => {
+                stepsContainer.innerHTML += '<div class=\"step\">' + step + '</div>';
+            });
         }
-
-        passElementsToSecondMember();
-
-        // let sepIdx = equation.findIndex((el) => el === '=');
-        let operationsTree = createTree(2, equation.length - 1);
-        // console.log(operationsTree);
-        let result = solveOperationsTree(operationsTree);
-        updateEquation([equation[0], '='].concat(result));
-
-        updateEquation(['x', '=', finalResult()]);
-
-        steps.forEach((step) => {
-            stepsContainer.innerHTML += '<div class=\"step\">' + step + '</div>';
-        });
     } else {
-        stepsContainer.innerHTML = 'Expressão inválida';
+        setErrorMessage('Expressão inválida');
     }
+}
+
+function setErrorMessage(error) {
+    stepsContainer.innerHTML = error;
+}
+
+function hasError() {
+    return stepsContainer.innerHTML !== '';
 }
 
 function verifyEquation(eqStr) {
@@ -115,15 +126,36 @@ function formatStep(separateElements = true) {
 }
 
 function solveMultsAndDivs() {
-    let newEqStr = this.formatStep(false);
+    let newEqStr = formatStep(false);
 
-    let operations = newEqStr.match(/(-?[0-9]+(\.[0-9]+)?([*\/]-?[0-9]+(\.[0-9]+)?)+)|(-?[0-9]+([*\/]-?[0-9]+)+)/g);
+    let operations = newEqStr.match(/-?(([0-9]+(\.[0-9]+)?x?)|x)([*\/]-?(([0-9]+(\.[0-9]+)?x?)|x))+/g);
     let solutions = [];
     if(operations === null)
-        return
+        return;
+
     for (let i = 0; i < operations.length; i++) {
-        console.log("f")
-        let elements = operations[i].match(/(-?[0-9]+(\.[0-9]+)?)|[*\/]/g);
+        let currOperation = operations[i];
+
+        if (currOperation.match(/x\*.*\*x|x\*x/)) {
+            setErrorMessage('Esta equação não é de primeiro grau.');
+            return;
+        }
+
+        const hasX = currOperation.match('x') !== null;
+        if (hasX) {
+            const idx = currOperation.indexOf('x');
+            if (idx === 0 || currOperation[idx - 1] === '*') {
+                currOperation = currOperation.replace('x', '1');
+            } else if (currOperation[idx - 1] === '/') {
+                setErrorMessage('Impossível dividir número por X.')
+                return;
+            } else {
+                currOperation = currOperation.replace('x', '');
+            }
+        }
+        console.log(currOperation);
+
+        let elements = currOperation.match(/(-?[0-9]+(\.[0-9]+)?)|[*\/]/g);
 
         let stack = [elements[0]];
         let operator;
@@ -144,15 +176,19 @@ function solveMultsAndDivs() {
             }
         }
 
-        console.log(operations[i], stack[0]);
+        if (hasX) {
+            stack[0] += 'x';
+            console.log(stack[0]);
+        }
+
         newEqStr = newEqStr.replace(operations[i], stack[0]);
-        console.log(newEqStr);
     }
 
     updateEquation(newEqStr.match(regexEquationElements), true);
 }
 
 function calculateXC(){
+    console.log(equation);
     let sepIdx = equation.findIndex((el) => el === '=');
     let eqWithoutX = [];
 
