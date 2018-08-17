@@ -1,0 +1,11 @@
+Se for root separa os dois membros pela =
+
+Olhando para o primeiro membro (e depois para o segundo):
+	detecta parênteses e chama a função recursivamente passando a equação interna
+	substitue os parênteses e o que tiver dentro retorno da chamada recursiva
+	resolve as multiplicações e divisões
+	resolve as somas
+
+Se for root subtrai o segundo membro (cx + d) do primeiro (ax + b)
+
+Retorna o resultado final no formato Ax + B
