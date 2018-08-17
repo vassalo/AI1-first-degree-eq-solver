@@ -12,7 +12,13 @@ class Node {
     }
 }
 
+/**
+ * @param equationStr qualquer equação de entrada
+ * @param isRoot deve ser true caso tenha igualdade (dois membros)
+ * @returns {string} no formato ax + b (= cx + d [caso isRoot seja true])
+ */
 function submit(equationStr = removeSpaces(document.getElementById('equation').value), isRoot = true) {
+    let memberStr = isRoot ? equationStr.split('=') : [equationStr];  // sempre terá 2 elementos/membros (se for root) ou 1 elemento/membro
     let equation = [];
 
     if (isRoot) {
@@ -28,16 +34,31 @@ function submit(equationStr = removeSpaces(document.getElementById('equation').v
         }
 
         if (hasError()) {
-            return false;
+            return undefined;
         }
-
-        equationStr = separateXCoefficients(equationStr);
-
-        equation = updateEquation(true, equation, 0, equation.length - 1, equationStr.match(regexEquationElements), true);
     }
 
+    let canUpdate = false;
+    for (let i = 0; i < memberStr.length; i++) {
+        equation.push(separateXCoefficients(memberStr[i]));
 
-    // solveMultsAndDivs();
+        let res = updateEquation(equation[i], equation[i].match(regexEquationElements), true);
+        equation[i] = res[0];
+        canUpdate = canUpdate || res[1];
+    }
+    if (canUpdate && isRoot) {
+        steps.push(formatStep(equation[0].concat('=', equation[1])));
+    }
+
+    canUpdate = false;
+    for (let i = 0; i < equation.length; i++) {
+        let res = solveMultsAndDivs(equation[i]);
+        equation[i] = res[0];
+        canUpdate = canUpdate || res[1];
+    }
+    if (canUpdate && isRoot) {
+        steps.push(formatStep(equation[0].concat('=', equation[1])));
+    }
     // if (hasError()) {
     //     return false;
     // }
@@ -86,6 +107,11 @@ function isValidEquation(eqStr) {
     return eqStr !== '' && eqStr.replace(regexFullEquation, '') === '';
 }
 
+/**
+ * Encontra elementos/multiplicações do tipo 'Ax', onde A é um númerico, e substitui por 'A*x' (inclui o símbolo de multiplicação)
+ * @param eqStr qualquer equação (com 1 ou 2 membros)
+ * @returns {string} equação atualizada com as multiplicações do tipo 'A*x' explícitadas
+ */
 function separateXCoefficients(eqStr) {
     const elementsWithX = eqStr.match(/[0-9]+(\.[0-9]+)?x/g);
     for (let i = 0; i < elementsWithX.length; i++) {
@@ -95,16 +121,23 @@ function separateXCoefficients(eqStr) {
     return eqStr;
 }
 
-function updateEquation(isRoot, currEq, begin, end, newEq, parseElements) {
+/**
+ * Atualiza a equação atual para a nova, caso sejam diferentes
+ * @param currEq array de elementos da equação atual
+ * @param newEq array de elementos da equação nova
+ * @param parseElements se for true os valores númericos em string serão convertidos para number
+ * @returns {(string|boolean)[]} array de elementos equação atual atualizada, ou não
+ */
+function updateEquation(currEq, newEq, parseElements) {
     let update = false;
 
-    removeUnnecessaryPlusSign(isRoot, newEq);
-    newEq = identifyUnaryMinus(isRoot, newEq);
+    removeUnnecessaryPlusSign(newEq);
+    newEq = identifyUnaryMinus(newEq);
 
-    if (newEq.length > 0 && newEq.length !== end - begin + 1) {
+    if (newEq.length > 0 && newEq.length !== currEq.length) {
         update = true;
     } else {
-        for (let i = begin; i <= end; i++) {
+        for (let i = 0; i < currEq.length; i++) {
             if (currEq[i] !== newEq[i]) {
                 update = true;
             }
@@ -113,37 +146,33 @@ function updateEquation(isRoot, currEq, begin, end, newEq, parseElements) {
 
     if (update) {
         currEq = newEq;
-        if (parseElements === true) {
+        if (parseElements) {
             parseElementsToNumber(currEq);
         }
-
-        steps.push(formatStep(currEq));
     }
 
-    return currEq;
+    return [currEq, update];
 }
 
-function removeUnnecessaryPlusSign(isRoot, eq) {
+function removeUnnecessaryPlusSign(eq) {
     if (eq[0] === '+') {
         eq.splice(0, 1);
     }
-
-    if (isRoot) {
-        let sepIdx = eq.findIndex((el) => el === '=');
-        if (eq[sepIdx + 1] === '+') {
-            eq.splice(sepIdx + 1, 1);
-        }
-    }
 }
 
-function identifyUnaryMinus(isRoot, eq) {
-    let sepIdx = eq.findIndex((el) => el === '=');
+/**
+ * Identifica as ocorrências do operador unário negativo e transforma cada uma em um único elemento junto com seu operando
+ * @param eq array de elementos da equação
+ * @returns {string[]} array de elementos da equação atualizada
+ */
+function identifyUnaryMinus(eq) {
+    // let sepIdx = eq.findIndex((el) => el === '=');
     let newEquation = [];
     for (let i = eq.length - 1; i >= 0; i--) {
-        let beginMember = (!isRoot || i < sepIdx) ? 0 : sepIdx + 1;
+        // let beginMember = (!isRoot || i < sepIdx) ? 0 : sepIdx + 1;
 
         if (eq[i] === '-') {
-            if (i === beginMember || !(!isNaN(eq[i - 1]) || eq[i - 1].match('x'))) {
+            if (i === 0 || (isNaN(eq[i - 1]) && !eq[i - 1].match('x'))) {
                 const element = newEquation.pop();
                 newEquation.push(isNaN(element) ? '-' + element : -1*element);
             } else {
@@ -157,6 +186,10 @@ function identifyUnaryMinus(isRoot, eq) {
     return newEquation.reverse()
 }
 
+/**
+ * Itera pelo array de elementos da equação e converte os números em string para number
+ * @param eq array de elementos da equação
+ */
 function parseElementsToNumber(eq) {
     for (let i = 0; i < eq.length; i++) {
         if (!isNaN(eq[i])) {
@@ -179,67 +212,70 @@ function formatStep(eq, separateElements = true) {
     return step;
 }
 
-// function solveMultsAndDivs(equation) {
-//     let newEqStr = formatStep(false);
-//
-//     let operations = newEqStr.match(/-?(([0-9]+(\.[0-9]+)?x?)|x)([*\/]-?(([0-9]+(\.[0-9]+)?x?)|x))+/g);
-//     let solutions = [];
-//     if(operations === null)
-//         return;
-//
-//     for (let i = 0; i < operations.length; i++) {
-//         let currOperation = operations[i];
-//
-//         if (currOperation.match(/x\*.*\*x|x\*x/)) {
-//             setErrorMessage('Esta equação não é de primeiro grau.');
-//             return;
-//         }
-//
-//         const hasX = currOperation.match('x') !== null;
-//         if (hasX) {
-//             const idx = currOperation.indexOf('x');
-//             if (idx === 0 || currOperation[idx - 1] === '*') {
-//                 currOperation = currOperation.replace('x', '1');
-//             } else if (currOperation[idx - 1] === '/') {
-//                 setErrorMessage('Impossível dividir número por X.')
-//                 return;
-//             } else {
-//                 currOperation = currOperation.replace('x', '');
-//             }
-//         }
-//         console.log(currOperation);
-//
-//         let elements = currOperation.match(/(-?[0-9]+(\.[0-9]+)?)|[*\/]/g);
-//
-//         let stack = [elements[0]];
-//         let operator;
-//
-//         for (let j = 0; j < elements.length; j++) {
-//             if (!isNaN(elements[j])) {
-//                 elements[j] = Number(elements[j]);
-//
-//                 if (operator === '*') {
-//                     let prevEl = stack.pop();
-//                     stack.push(prevEl * elements[j]);
-//                 } else if (operator === '/') {
-//                     let prevEl = stack.pop();
-//                     stack.push(prevEl / elements[j]);
-//                 }
-//             } else {
-//                 operator = elements[j];
-//             }
-//         }
-//
-//         if (hasX) {
-//             stack[0] += 'x';
-//             console.log(stack[0]);
-//         }
-//
-//         newEqStr = newEqStr.replace(operations[i], stack[0]);
-//     }
-//
-//     updateEquation(newEqStr.match(regexEquationElements), true);
-// }
+/**
+ *
+ * @param equation
+ * @returns {(string|boolean)[]}
+ */
+function solveMultsAndDivs(equation) {
+    let newEqStr = formatStep(equation, false);
+
+    let operations = newEqStr.match(/-?(([0-9]+(\.[0-9]+)?x?)|x)([*\/]-?(([0-9]+(\.[0-9]+)?x?)|x))+/g);
+    let solutions = [];
+    if(operations === null)
+        return [equation, false];
+
+    for (let i = 0; i < operations.length; i++) {
+        let currOperation = operations[i];
+
+        if (currOperation.match(/x\*.*\*x|x\*x/)) {
+            setErrorMessage('Esta equação não é de primeiro grau.');
+            return [equation, false];
+        }
+
+        const hasX = currOperation.match('x') !== null;
+        if (hasX) {
+            const idx = currOperation.indexOf('x');
+            if (idx === 0 || currOperation[idx - 1] === '*') {
+                currOperation = currOperation.replace('x', '1');
+            } else if (currOperation[idx - 1] === '/') {
+                setErrorMessage('Impossível dividir número por X.')
+                return [equation, false];
+            } else {
+                currOperation = currOperation.replace('x', '');
+            }
+        }
+
+        let elements = currOperation.match(/(-?[0-9]+(\.[0-9]+)?)|[*\/]/g);
+
+        let stack = [elements[0]];
+        let operator;
+
+        for (let j = 0; j < elements.length; j++) {
+            if (!isNaN(elements[j])) {
+                elements[j] = Number(elements[j]);
+
+                if (operator === '*') {
+                    let prevEl = stack.pop();
+                    stack.push(prevEl * elements[j]);
+                } else if (operator === '/') {
+                    let prevEl = stack.pop();
+                    stack.push(prevEl / elements[j]);
+                }
+            } else {
+                operator = elements[j];
+            }
+        }
+
+        if (hasX) {
+            stack[0] += 'x';
+        }
+
+        newEqStr = newEqStr.replace(operations[i], stack[0]);
+    }
+
+    return updateEquation(newEqStr.match(regexEquationElements), true);
+}
 //
 // function calculateXC(){
 //     console.log(equation);
