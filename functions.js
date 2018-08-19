@@ -18,18 +18,21 @@ class Node {
  * @returns {string} no formato ax + b (= cx + d [caso isRoot seja true])
  */
 function submit(equationStr = removeSpaces(document.getElementById('equation').value), isRoot = true) {
-    let memberStr = isRoot ? equationStr.split('=') : [equationStr];  // sempre terá 2 elementos/membros (se for root) ou 1 elemento/membro
-    let equation = [];
+    console.log('submit', equationStr);
+    let memberStr = isRoot ? equationStr.split('=') : [equationStr];  // sempre terá 2 (se for root) ou 1 membros
+    let equation = []; // sempre terá 1 ou 2 array de elementos
 
+    //region Checagem de erros para Root
     if (isRoot) {
         stepsContainer = document.getElementById('stepsContainer');
         stepsContainer.innerHTML = '';
+        steps.length = 0;
 
         if (equationStr.match(/=/g) === null) {
             setErrorMessage('Para ser uma equação é necessário haver uma igualdade');
         } else if (equationStr.match(/x/g) === null) {
             setErrorMessage('Para ser do primeiro grau é necessário haver uma incógnita x');
-        } else if (!isValidEquation(equationStr)) {
+        } else if (!isValidEquation(equationStr.replace(/\(/g, '').replace(/\)/g    , ''))) {
             setErrorMessage('Equação inválida');
         }
 
@@ -37,19 +40,44 @@ function submit(equationStr = removeSpaces(document.getElementById('equation').v
             return undefined;
         }
     }
+    //endregion
 
+    //region Verifica a existência de parênteses e chama recursivamente
+    for (let i = 0; i < memberStr.length; i++) {
+        if (hasUnbalancedParenthesis(memberStr[i])) {
+            setErrorMessage('Equação possui parênteses desbalanceados');
+            return undefined;
+        } else if (memberStr[i].match(/\(\)/)) {
+            setErrorMessage('Equação possui parênteses vazios');
+            return undefined;
+        }
+
+        let subEquations = memberStr[i].match(/\(.+\)/g);
+        for (let j = 0; subEquations && j < subEquations.length; j++) {
+            let curr = subEquations[j].substr(1).substr(0, subEquations[j].length - 2);
+            curr = submit(curr, false);
+            if (curr === undefined) return undefined;
+            memberStr[i] = memberStr[i].replace(subEquations[j], curr);
+        }
+    }
+    //endregion
+
+    //region Explicita as multiplações do tipo a*x
     let canUpdate = false;
     for (let i = 0; i < memberStr.length; i++) {
-        equation.push(separateXCoefficients(memberStr[i]));
+        memberStr[i] = separateXCoefficients(memberStr[i]);
+        equation.push([]);
 
-        let res = updateEquation(equation[i], equation[i].match(regexEquationElements), true);
+        let res = updateEquation(equation[i], memberStr[i].match(regexEquationElements), true);
         equation[i] = res[0];
         canUpdate = canUpdate || res[1];
     }
     if (canUpdate && isRoot) {
         steps.push(formatStep(equation[0].concat('=', equation[1])));
     }
+    //endregion
 
+    //region Resolve as multiplicações e divisões
     canUpdate = false;
     for (let i = 0; i < equation.length; i++) {
         let res = solveMultsAndDivs(equation[i]);
@@ -59,34 +87,73 @@ function submit(equationStr = removeSpaces(document.getElementById('equation').v
     if (canUpdate && isRoot) {
         steps.push(formatStep(equation[0].concat('=', equation[1])));
     }
-    // if (hasError()) {
-    //     return false;
-    // }
-    //
-    //
-    //
-    // calculateXC();
-    //
-    // if (xCoefficient === 0) {
-    //     setErrorMessage('Impossível dividir por zero');
-    //     return;
-    // }
-    //
-    // passElementsToSecondMember();
-    //
-    // // let sepIdx = equation.findIndex((el) => el === '=');
-    // let operationsTree = createTree(2, equation.length - 1);
-    // // console.log(operationsTree);
-    // let result = solveOperationsTree(operationsTree);
-    // updateEquation([equation[0], '='].concat(result));
-    //
-    // updateEquation(['x', '=', finalResult()]);
-    //
+    //endregion
+
+    //region Encontra o coeficiente de x em ambos os membros
+    canUpdate = false;
+    for (let i = 0; i < equation.length; i++) {
+        let res = calculateXC(equation[i]);
+        equation[i] = res[0];
+        canUpdate = canUpdate || res[1];
+    }
+    if (canUpdate && isRoot) {
+        steps.push(formatStep(equation[0].concat('=', equation[1])));
+    }
+    //endregion
+
+    //region Resolve somas e subtrações
+    canUpdate = false;
+    for (let i = 0; i < equation.length; i++) {
+        let operationsTree = createTree(equation[i], isNaN(equation[i][0]) ? 2 : 0, equation[i].length - 1);
+        let operationsResult = operationsTree !== undefined ? solveOperationsTree(operationsTree) : 0;
+
+        let res = updateEquation(equation[i],
+            isNaN(equation[i][0]) ?
+                equation[i].length > 1 ?
+                    [equation[i][0], equation[i][1]].concat(operationsResult)
+                    : [equation[i][0]]
+                : [operationsResult], false);
+        equation[i] = res[0];
+        canUpdate = canUpdate || res[1];
+    }
+    if (canUpdate && isRoot) {
+        steps.push(formatStep(equation[0].concat('=', equation[1])));
+    }
+    //endregion
+
+    //region calcula o resultado final, jogando cada elemento pro seu respectivo membro
+    if (isRoot) {
+        let finalXCoef = 0;
+        finalXCoef += isNaN(equation[0][0]) ? Number(equation[0][0].match(/-?[0-9]+(\.[0-9]+)?/)[0]) : 0;
+        finalXCoef -= isNaN(equation[1][0]) ? Number(equation[1][0].match(/-?[0-9]+(\.[0-9]+)?/)[0]) : 0;
+
+        let finalResult = 0;
+        finalResult -= equation[0].length > 1 ?
+                            equation[0][1] === '+' ? equation[0][2] : -equation[0][2]
+                        : isNaN(equation[0][0]) ? 0 : equation[0][0];
+        finalResult += equation[1].length > 1 ?
+                            equation[1][1] === '+' ? equation[1][2] : -equation[1][2]
+                        : isNaN(equation[1][0]) ? 0 : equation[1][0];
+
+        let res = updateEquation(equation[0], [finalXCoef + 'x'], false);
+        equation[0] = res[0];
+        canUpdate = res[1];
+        res = updateEquation(equation[1], [finalResult], false);
+        equation[1] = res[0];
+        canUpdate = canUpdate || res[1];
+
+        if (canUpdate) {
+            steps.push(formatStep(equation[0].concat('=', equation[1])));
+        }
+    }
+    //endregion
 
     if (isRoot) {
         steps.forEach((step) => {
             stepsContainer.innerHTML += '<div class=\"step\">' + step + '</div>';
         });
+    } else {
+        return formatStep(equation[0], false);
     }
 }
 
@@ -107,14 +174,31 @@ function isValidEquation(eqStr) {
     return eqStr !== '' && eqStr.replace(regexFullEquation, '') === '';
 }
 
+function hasUnbalancedParenthesis(eqStr) {
+    let stack = [];
+
+    for (let i = 0; i < eqStr.length; i++) {
+        if (eqStr[i] === '(') {
+            stack.push('(');
+        } else if (eqStr[i] === ')') {
+            if (stack.length === 0) {
+                return true;
+            }
+            stack.pop();
+        }
+    }
+
+    return stack.length !== 0;
+}
+
 /**
  * Encontra elementos/multiplicações do tipo 'Ax', onde A é um númerico, e substitui por 'A*x' (inclui o símbolo de multiplicação)
  * @param eqStr qualquer equação (com 1 ou 2 membros)
- * @returns {string} equação atualizada com as multiplicações do tipo 'A*x' explícitadas
+ * @returns {string} equação atualizada com as multiplicações do tipo 'A*x' explicitadas
  */
 function separateXCoefficients(eqStr) {
     const elementsWithX = eqStr.match(/[0-9]+(\.[0-9]+)?x/g);
-    for (let i = 0; i < elementsWithX.length; i++) {
+    for (let i = 0; elementsWithX && i < elementsWithX.length; i++) {
         const separated = elementsWithX[i].substr(0, elementsWithX[i].length - 1).concat('*x');
         eqStr = eqStr.replace(elementsWithX[i], separated);
     }
@@ -122,11 +206,11 @@ function separateXCoefficients(eqStr) {
 }
 
 /**
- * Atualiza a equação atual para a nova, caso sejam diferentes
+ * Atualiza o array de elementos da equação atual para o novo, caso sejam diferentes
  * @param currEq array de elementos da equação atual
  * @param newEq array de elementos da equação nova
  * @param parseElements se for true os valores númericos em string serão convertidos para number
- * @returns {(string|boolean)[]} array de elementos equação atual atualizada, ou não
+ * @returns {(string[]|boolean)[]} tupla com array de elementos da equação atual atualizada, ou não, e uma flag que indica se o array novo é diferente do inicial
  */
 function updateEquation(currEq, newEq, parseElements) {
     let update = false;
@@ -213,9 +297,9 @@ function formatStep(eq, separateElements = true) {
 }
 
 /**
- *
- * @param equation
- * @returns {(string|boolean)[]}
+ * Resolve as multiplicações e divisões de um array de elementos
+ * @param equation array de elementos da equação a ser resolvida
+ * @returns {(string[]|boolean)[]} tupla com array de elementos com as multiplicações e divisões resolvidas e uma flag que diz se a equação nova é diferente da inicial
  */
 function solveMultsAndDivs(equation) {
     let newEqStr = formatStep(equation, false);
@@ -230,7 +314,7 @@ function solveMultsAndDivs(equation) {
 
         if (currOperation.match(/x\*.*\*x|x\*x/)) {
             setErrorMessage('Esta equação não é de primeiro grau.');
-            return [equation, false];
+            return undefined;
         }
 
         const hasX = currOperation.match('x') !== null;
@@ -239,8 +323,8 @@ function solveMultsAndDivs(equation) {
             if (idx === 0 || currOperation[idx - 1] === '*') {
                 currOperation = currOperation.replace('x', '1');
             } else if (currOperation[idx - 1] === '/') {
-                setErrorMessage('Impossível dividir número por X.')
-                return [equation, false];
+                setErrorMessage('Impossível dividir número por X.');
+                return undefined;
             } else {
                 currOperation = currOperation.replace('x', '');
             }
@@ -274,120 +358,81 @@ function solveMultsAndDivs(equation) {
         newEqStr = newEqStr.replace(operations[i], stack[0]);
     }
 
-    return updateEquation(newEqStr.match(regexEquationElements), true);
+    return updateEquation(equation, newEqStr.match(regexEquationElements), true);
 }
-//
-// function calculateXC(){
-//     console.log(equation);
-//     let sepIdx = equation.findIndex((el) => el === '=');
-//     let eqWithoutX = [];
-//
-//     for (let i = 0; i < equation.length; i++) {
-//         if (isNaN(equation[i]) && equation[i].match('x')) {
-//             let innerCoef = equation[i].match(/[0-9]+(\.[0-9]+)?/);
-//             let multFactor = (innerCoef === null || innerCoef[0].length === 0 ? 1 : Number(innerCoef[0]));
-//             if (equation[i][0] === '-') {
-//                 multFactor *= -1;
-//             }
-//
-//             if (i < sepIdx) {
-//                 if (i === 0) {
-//                     xCoefficient += multFactor;
-//                 } else if (equation[i - 1] === '+') {
-//                     xCoefficient += multFactor;
-//                     eqWithoutX.pop();
-//                 } else {
-//                     eqWithoutX.pop();
-//                     xCoefficient -= multFactor;
-//                 }
-//             } else {
-//                 if (i === sepIdx + 1 ) {
-//                     xCoefficient -= multFactor;
-//                 } else if (equation[i - 1] === '+') {
-//                     xCoefficient -= multFactor;
-//                     eqWithoutX.pop();
-//                 } else {
-//                     eqWithoutX.pop();
-//                     xCoefficient += multFactor;
-//                 }
-//             }
-//         } else {
-//             eqWithoutX.push(equation[i]);
-//         }
-//     }
-//
-//     if (!isNaN(eqWithoutX[0])) {
-//         eqWithoutX = ['+'].concat(eqWithoutX);
-//     }
-//
-//     sepIdx = eqWithoutX.findIndex((el) => el === '=');
-//     if (sepIdx === eqWithoutX.length - 1) {
-//         eqWithoutX = eqWithoutX.concat(0);
-//     }
-//
-//     updateEquation([(Math.abs(xCoefficient) === 1 ? (xCoefficient < 0 ? '-' : '') : xCoefficient) + 'x'].concat(eqWithoutX));
-// }
-//
-// function passElementsToSecondMember() {
-//     let sepIdx = equation.findIndex((el) => el === '=');
-//     let newScndMember = equation.slice(sepIdx + 1);
-//
-//     for (let i = 1; i < sepIdx; i++) {
-//         switch (equation[i]) {
-//             case '+':
-//                 newScndMember.push('-');
-//                 break;
-//             case '-':
-//                 newScndMember.push('+');
-//                 break;
-//             default:
-//                 newScndMember.push(equation[i]);
-//                 break;
-//         }
-//     }
-//
-//     updateEquation([equation[0], '='].concat(newScndMember));
-// }
-//
-// function createTree(begin, end){
-//     if (begin === end) {
-//         return equation[begin];
-//     }
-//
-//     let a, b, op;
-//     for(let i = end; i >= begin; i--) {
-//         if (isNaN(equation[i])) {
-//             op = equation[i];
-//             a = createTree(begin, i - 1);
-//             b = createTree(i + 1, end);
-//             return new Node(op, a, b);
-//         }
-//     }
-// }
-//
-// function solveOperationsTree(node) {
-//     if (isLeaf(node)) {
-//         return node;
-//     }
-//
-//     let res;
-//     switch (node.op) {
-//         case '+':
-//             res = solveOperationsTree(node.a) + solveOperationsTree(node.b);
-//             break;
-//         case '-':
-//             res = solveOperationsTree(node.a) - solveOperationsTree(node.b);
-//             break;
-//     }
-//
-//     return res;
-// }
-//
-// function isLeaf(node) {
-//     return node.a === undefined && node.b === undefined;
-// }
-//
-// function finalResult(){
-//     return equation[2]/xCoefficient;
-// }
-//
+
+/**
+ * Calcula o coeficiente de X e coloca junto a X
+ * @param equation equação a ser simplificada
+ * @returns {(string[]|boolean)[]} tupla com array de elementos com os elementos de X simplificados e uma flag que indica se o novo array é diferente do inicial
+ */
+function calculateXC(equation){
+    let eqWithoutX = [], xCoefficient = 0;
+
+    for (let i = 0; i < equation.length; i++) {
+        if (isNaN(equation[i]) && equation[i].match('x')) {
+            let innerCoef = equation[i].match(/[0-9]+(\.[0-9]+)?/);
+            let multFactor = (innerCoef === null || innerCoef[0].length === 0 ? 1 : Number(innerCoef[0]));
+            if (equation[i][0] === '-') {
+                multFactor *= -1;
+            }
+
+            if (i === 0) {
+                xCoefficient += multFactor;
+            } else if (equation[i - 1] === '+') {
+                xCoefficient += multFactor;
+                eqWithoutX.pop();
+            } else {
+                eqWithoutX.pop();
+                xCoefficient -= multFactor;
+            }
+        } else {
+            eqWithoutX.push(equation[i]);
+        }
+    }
+
+    if (!isNaN(eqWithoutX[0]) && xCoefficient !== 0) {
+        eqWithoutX = ['+'].concat(eqWithoutX);
+    }
+
+    return updateEquation(equation,
+        xCoefficient !== 0 ? [(Math.abs(xCoefficient) === 1 ? (xCoefficient < 0 ? '-' : '') : xCoefficient) + 'x'].concat(eqWithoutX) : eqWithoutX, false);
+}
+
+function createTree(equation, begin, end){
+    if (begin === end) {
+        return equation[begin];
+    }
+
+    let a, b, op;
+    for(let i = end; i >= begin; i--) {
+        if (isNaN(equation[i])) {
+            op = equation[i];
+            a = createTree(equation, begin, i - 1);
+            b = createTree(equation, i + 1, end);
+            return new Node(op, a, b);
+        }
+    }
+}
+
+function solveOperationsTree(node) {
+    if (isLeaf(node)) {
+        return node;
+    }
+
+    let res;
+    switch (node.op) {
+        case '+':
+            res = solveOperationsTree(node.a) + solveOperationsTree(node.b);
+            break;
+        case '-':
+            res = solveOperationsTree(node.a) - solveOperationsTree(node.b);
+            break;
+    }
+
+    return res;
+}
+
+function isLeaf(node) {
+    return node.a === undefined && node.b === undefined;
+}
