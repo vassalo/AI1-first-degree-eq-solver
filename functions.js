@@ -121,11 +121,11 @@ function submit(equationStr = removeSpaces(document.getElementById('equation').v
     }
     //endregion
 
-    //region calcula o resultado final, jogando cada elemento pro seu respectivo membro
+    //region Calcula o resultado final, jogando cada elemento pro seu respectivo membro
     if (isRoot) {
         let finalXCoef = 0;
-        finalXCoef += isNaN(equation[0][0]) ? Number(equation[0][0].match(/-?[0-9]+(\.[0-9]+)?/)[0]) : 0;
-        finalXCoef -= isNaN(equation[1][0]) ? Number(equation[1][0].match(/-?[0-9]+(\.[0-9]+)?/)[0]) : 0;
+        finalXCoef += isNaN(equation[0][0]) ? extractXCoef(equation[0][0]) : 0;
+        finalXCoef -= isNaN(equation[1][0]) ? extractXCoef(equation[1][0]) : 0;
 
         let finalResult = 0;
         finalResult -= equation[0].length > 1 ?
@@ -135,7 +135,9 @@ function submit(equationStr = removeSpaces(document.getElementById('equation').v
                             equation[1][1] === '+' ? equation[1][2] : -equation[1][2]
                         : isNaN(equation[1][0]) ? 0 : equation[1][0];
 
-        let res = updateEquation(equation[0], [finalXCoef + 'x'], false);
+        finalResult = finalResult / finalXCoef;
+
+        let res = updateEquation(equation[0], ['x'], false);
         equation[0] = res[0];
         canUpdate = res[1];
         res = updateEquation(equation[1], [finalResult], false);
@@ -435,4 +437,13 @@ function solveOperationsTree(node) {
 
 function isLeaf(node) {
     return node.a === undefined && node.b === undefined;
+}
+
+function extractXCoef(element) {
+    const multiplyFactor = element[0] === '-' ? -1 : 1;
+    const match = (element[0] === '-' ? element.substr(1) : element).match(/[0-9]+(\.[0-9]+)?/);
+    if (match === null) {
+        return multiplyFactor;
+    }
+    return Number(match[0]) * multiplyFactor;
 }
