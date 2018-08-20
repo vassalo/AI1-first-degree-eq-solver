@@ -365,7 +365,13 @@ function solveMultsAndDivs(equation) {
     for (let i = 0; i < operations.length; i++) {
         let currOperation = operations[i];
 
-        if (currOperation.match(/x\*.*\*x|x\*x/)) {
+        let opIdx = newEqStr.indexOf(currOperation);
+        if (currOperation[0] === '-' && (!isNaN(newEqStr[opIdx - 1]) || newEqStr[opIdx - 1] === 'x')) {
+          currOperation = currOperation.substr(1);
+          operations[i] = currOperation;
+        }
+
+        if (currOperation.match(/x\*.*\*?x/)) {
             setErrorMessage('Esta equação não é de primeiro grau.');
             return undefined;
         }
