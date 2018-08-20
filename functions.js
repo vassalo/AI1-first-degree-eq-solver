@@ -52,9 +52,10 @@ function submit(equationStr = removeSpaces(document.getElementById('equation').v
             return undefined;
         }
 
-        let subEquations = memberStr[i].match(/\(.+\)/g);
-        for (let j = 0; subEquations && j < subEquations.length; j++) {
-            let curr = subEquations[j].substr(1).substr(0, subEquations[j].length - 2);
+        let subEquations = getParenthesisExpressions(memberStr[i]);
+        console.log('subEqs', subEquations);
+        for (let j = 0; j < subEquations.length; j++) {
+            let curr = subEquations[j];
             curr = submit(curr, false);
             if (curr === undefined) return undefined;
             memberStr[i] = memberStr[i].replace(subEquations[j], curr);
@@ -62,10 +63,10 @@ function submit(equationStr = removeSpaces(document.getElementById('equation').v
     }
     //endregion
 
-    //region Explicita as multiplações do tipo a*x
+    //region Inicializa o array equation
     let canUpdate = false;
     for (let i = 0; i < memberStr.length; i++) {
-        memberStr[i] = separateXCoefficients(memberStr[i]);
+        // memberStr[i] = separateXCoefficients(memberStr[i]);
         equation.push([]);
 
         let res = updateEquation(equation[i], memberStr[i].match(regexEquationElements), true);
@@ -127,6 +128,11 @@ function submit(equationStr = removeSpaces(document.getElementById('equation').v
         finalXCoef += isNaN(equation[0][0]) ? extractXCoef(equation[0][0]) : 0;
         finalXCoef -= isNaN(equation[1][0]) ? extractXCoef(equation[1][0]) : 0;
 
+        if (finalXCoef === 0) {
+            setErrorMessage('Impossível dividir por 0');
+            return undefined;
+        }
+
         let finalResult = 0;
         finalResult -= equation[0].length > 1 ?
                             equation[0][1] === '+' ? equation[0][2] : -equation[0][2]
@@ -135,9 +141,20 @@ function submit(equationStr = removeSpaces(document.getElementById('equation').v
                             equation[1][1] === '+' ? equation[1][2] : -equation[1][2]
                         : isNaN(equation[1][0]) ? 0 : equation[1][0];
 
+        let res = updateEquation(equation[0], [(finalXCoef === 1 ? '' : (finalXCoef === -1 ? '-' : finalXCoef)) + 'x'], false);
+        equation[0] = res[0];
+        canUpdate = res[1];
+        res = updateEquation(equation[1], [finalResult], false);
+        equation[1] = res[0];
+        canUpdate = canUpdate || res[1];
+
+        if (canUpdate) {
+            steps.push(formatStep(equation[0].concat('=', equation[1])));
+        }
+
         finalResult = finalResult / finalXCoef;
 
-        let res = updateEquation(equation[0], ['x'], false);
+        res = updateEquation(equation[0], ['x'], false);
         equation[0] = res[0];
         canUpdate = res[1];
         res = updateEquation(equation[1], [finalResult], false);
@@ -191,6 +208,40 @@ function hasUnbalancedParenthesis(eqStr) {
     }
 
     return stack.length !== 0;
+}
+
+/**
+ * Retorna todos as expressões em parenteses de mesmo nivel
+ * @param eqStr equação em string com, ou sem, parenteses dentro
+ * @returns {string[]} array com as expressões dentro de parenteses de mesmo nivel
+ */
+function getParenthesisExpressions(eqStr) {
+    let parenthesisStack = [], expressionsQueue = [], aux = '';
+
+    for (let i = 0; i < eqStr.length; i++) {
+        if (eqStr[i] === '(') {
+            let isInnerParenthesis = true;
+            if (parenthesisStack.length === 0) {
+                isInnerParenthesis = false;
+            }
+
+            parenthesisStack.push('(');
+            if (isInnerParenthesis) {
+                aux += '(';
+            }
+        } else if (eqStr[i] === ')') {
+            if (parenthesisStack.pop() === '(' && parenthesisStack.length === 0) {
+                expressionsQueue.push(aux);
+                aux = '';
+            } else {
+                aux += ')';
+            }
+        } else if (parenthesisStack.length > 0) {
+            aux += eqStr[i];
+        }
+    }
+
+    return expressionsQueue;
 }
 
 /**
@@ -441,6 +492,9 @@ function isLeaf(node) {
 }
 
 function extractXCoef(element) {
+    if (element === undefined) {
+        return 0;
+    }
     const multiplyFactor = element[0] === '-' ? -1 : 1;
     const match = (element[0] === '-' ? element.substr(1) : element).match(/[0-9]+(\.[0-9]+)?/);
     if (match === null) {
