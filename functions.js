@@ -322,13 +322,14 @@ function solveMultsAndDivs(equation) {
         const hasX = currOperation.match('x') !== null;
         if (hasX) {
             const idx = currOperation.indexOf('x');
-            if (idx === 0 || currOperation[idx - 1] === '*') {
-                currOperation = currOperation.replace('x', '1');
-            } else if (currOperation[idx - 1] === '/') {
+
+            if (currOperation[idx - 1] === '/') {
                 setErrorMessage('Impossível dividir número por X.');
                 return undefined;
-            } else {
+            } else if (!isNaN(currOperation[idx - 1])) {
                 currOperation = currOperation.replace('x', '');
+            } else {
+                currOperation = currOperation.replace('x', '1');
             }
         }
 
